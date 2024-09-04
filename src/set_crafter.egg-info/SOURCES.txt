@@ -1,0 +1,6 @@
+README.md
+setup.py
+src/set_crafter.egg-info/PKG-INFO
+src/set_crafter.egg-info/SOURCES.txt
+src/set_crafter.egg-info/dependency_links.txt
+src/set_crafter.egg-info/top_level.txt
