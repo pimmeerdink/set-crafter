@@ -2,12 +2,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-from bandcamp_api import Bandcamp
-from bandcamp_api.bandcamp_api import get_json
 from schemas import Item, Set, BandcampUrl, BPMRange, RecommendationRequest
 from constants import BpmRange
 import traceback
 from recommend_tracks import get_recommendations
+from utils import get_json_from_html
 
 app = FastAPI()
 
@@ -27,7 +26,6 @@ app.add_middleware(
 @app.post("/generate-recommendations", response_model=List[Item])
 async def generate_recommendations(request: RecommendationRequest):
     try:
-        bandcamp = Bandcamp()
         recs = await get_recommendations(
             request.set_input.items,
             BpmRange(request.bpm_range.min, request.bpm_range.max),
@@ -44,17 +42,18 @@ async def generate_recommendations(request: RecommendationRequest):
 
 @app.post("/get-bandcamp-id", response_model=Item)
 async def get_bandcamp_id(input: BandcampUrl):
-    bandcamp = Bandcamp()
-
     try:
-        item = get_json(bandcamp, input.url)
-        if item.get("album_id"):
+        props = get_json_from_html(input.url)
+        if props.get("album_id"):
+            print(f"Found album_id: {props['album_id']}")
             return Item(
-                id=str(item.get("album_id")), type="album", url=input.url
+                id=str(props.get("album_id")), type="album", url=input.url
             )
-        elif item.get("track_id"):
+        elif props.get("track_id"):
+            print(f"Found track_id: {props['track_id']}")
+
             return Item(
-                id=str(item.get("track_id")), type="track", url=input.url
+                id=str(props.get("track_id")), type="track", url=input.url
             )
         else:
             raise HTTPException(
