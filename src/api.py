@@ -15,7 +15,8 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000"
+        "http://localhost:3000",
+        "http://localhost:4321"
     ],  # Adjust this to match your frontend URL
     allow_credentials=True,
     allow_methods=["*"],
@@ -44,6 +45,7 @@ async def generate_recommendations(request: RecommendationRequest):
 @app.post("/get-bandcamp-id", response_model=Item)
 async def get_bandcamp_id(input: BandcampUrl):
     bandcamp = Bandcamp()
+
     try:
         item = get_json(bandcamp, input.url)
         if item.get("album_id"):
