@@ -1,0 +1,29 @@
+#+title: astro-app-template installation guide
+
+* introduction
+
+this document provides instructions on how to install and set up the
+astro-app-template from its github repository. there are two versions available
+for installation: the main version and the redux version.
+
+* what's in it?
+
+a empty project on the following stack:
+- bun
+- astro
+- react
+- tailwind
+- shadcn/ui
+
+* installation
+
+** main version
+
+#+begin_src shell
+npx degit jpjagt/astro-app-template#main my-app
+#+end_src
+
+* post-installation
+
+after installation, you may want to change the name of your project in
+=package.json=.
