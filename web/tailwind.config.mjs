@@ -16,6 +16,10 @@ export default {
         'antimetal': '0 0 0 1px #0e3f7e0a, 0 1px 1px -.5px #2a33450a, 0 3px 3px -1.5px #2a33460a, 0 6px 6px -3px #2a33460a, 0 12px 12px -6px #0e3f7e0a, 0 24px 24px -12px #0e3f7e0a',
         'antimetal-lg': '0 0 0 1px #0e3f7e1f, 0 2px 2px -.5px #2a33451f, 0 5px 8px -1.5px #2a33461f, 0 9px 10px -3px #2a33461f, 0 15px 15px -6px #0e3f7e1f, 0 28px 28px -12px #0e3f7e1f',
       },
+      fontFamily: {
+        header: ['Syne', 'sans-serif'],
+        mono: ['"Jersey 20"', 'monospace']
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -50,6 +54,15 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+      },
+      dropShadow: {
+        'primary-sm': '0 0 3px rgba(165, 243, 252, 0.25)',
+        'primary': '0 0 4px rgba(165, 243, 252, 0.33)',
+        'primary-hover': '0 0 6px rgba(165, 243, 252, 0.6)',
+        'primary-lg': '0 0 32px rgba(165, 243, 252, 0.8)',
+      },
+      boxShadow: {
+        'primary-input': '0 0 4px 1px rgba(165, 243, 252, 0.25)'
       },
       borderRadius: {
         lg: "var(--radius)",

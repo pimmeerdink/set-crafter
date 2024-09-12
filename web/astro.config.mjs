@@ -3,6 +3,8 @@ import react from "@astrojs/react";
 
 import tailwind from "@astrojs/tailwind";
 
+import alpinejs from "@astrojs/alpinejs";
+
 // https://astro.build/config
 export default defineConfig({
   vite: {
@@ -12,10 +14,7 @@ export default defineConfig({
       },
     },
   },
-  integrations: [
-    react(),
-    tailwind({
-      applyBaseStyles: false,
-    }),
-  ]
+  integrations: [react(), tailwind({
+    applyBaseStyles: false,
+  }), alpinejs()]
 });

@@ -90,7 +90,7 @@ async def process_bpm_urls(urls):
             return url, None
 
     results = await asyncio.gather(*[process_url(url) for url in urls])
-    return pd.Series({url: bpm[0] for url, bpm in results if bpm is not None})
+    return pd.Series({url: bpm[0] for url, bpm in results if bpm is not None}, dtype="float64")
 
 
 if __name__ == "__main__":

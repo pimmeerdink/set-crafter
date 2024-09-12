@@ -1,0 +1,55 @@
+---
+interface Props {
+  id: string
+  'x-model': string
+}
+
+const { id, 'x-model': xModel } = Astro.props
+---
+
+<div class="checkbox-wrapper">
+  <input type="checkbox" id={id} x-model={xModel} />
+</div>
+
+<style>
+  .checkbox-wrapper {
+    display: inline-block;
+    position: relative;
+    @apply w-4 h-4;
+  }
+
+  input[type='checkbox'] {
+    appearance: none;
+    -webkit-appearance: none;
+    margin: 0;
+    @apply cursor-pointer;
+  }
+
+  input[type='checkbox']::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    @apply w-4 h-4;
+    @apply border-2 border-primary-foreground;
+    @apply bg-background;
+    transition: all 0.2s ease;
+  }
+
+  input[type='checkbox']:hover::before {
+    @apply bg-primary;
+  }
+
+  input[type='checkbox']:checked::before {
+    @apply bg-primary border-primary-foreground text-primary-foreground;
+  }
+
+  input[type='checkbox']:checked::after {
+    content: '\2714';
+    position: absolute;
+    left: 3px;
+    top: -6px;
+    @apply text-primary-foreground font-mono;
+    font-size: 18px;
+  }
+</style>

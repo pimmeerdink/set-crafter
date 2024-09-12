@@ -1,11 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Jersey+20&display=swap');
+
+
 @tailwind base;
   @tailwind components;
   @tailwind utilities;
 
   @layer base {
     :root {
-      --background: 0 0% 100%;
-      --foreground: 222.2 84% 4.9%;
+      --background: 197 78.9% 4.9%;
+      --foreground: 191.6 91.4% 36.5%;
 
       --card: 0 0% 100%;
       --card-foreground: 222.2 84% 4.9%;
@@ -13,10 +17,10 @@
       --popover: 0 0% 100%;
       --popover-foreground: 222.2 84% 4.9%;
 
-      --primary: 222.2 47.4% 11.2%;
-      --primary-foreground: 210 40% 98%;
+      --primary: 195 80% 10%;
+      --primary-foreground: 186.2 93.5% 81.8%;
 
-      --secondary: 210 40% 96.1%;
+      --secondary: 0 90.6% 70.8%;
       --secondary-foreground: 222.2 47.4% 11.2%;
 
       --muted: 210 40% 96.1%;
@@ -73,4 +77,12 @@
     body {
       @apply bg-background text-foreground;
     }
+
+.text-primary-foreground {
+  @apply drop-shadow-primary-sm;
+}
+
+input.text-primary-foreground {
+  @apply drop-shadow-none;
+}
   }

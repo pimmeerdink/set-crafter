@@ -1,0 +1,186 @@
+---
+import { Button } from '@/components/ui/button'
+import Checkbox from '@/components/Checkbox.astro'
+---
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6" x-data="alpineData">
+  <div>
+    <div class="flex items-center border border-primary-foreground/20">
+      <input
+        type="text"
+        x-model="url"
+        placeholder="enter bandcamp url"
+        class="flex-1 font-mono border-none text-primary-foreground text-xl px-4 py-1 outline-none bg-primary/80 focus:bg-primary"
+        @keydown.enter="addItem"
+      />
+
+      <Button x-on:click="addItem" variant="link">add item</Button>
+    </div>
+
+    <div class="mt-4">
+      <template x-for="(item, index) in items">
+        <div
+          class="even:bg-primary/80 py-1 px-4 overflow-hidden text-ellipsis flex items-center"
+        >
+          <p
+            class="font-mono text-primary-foreground truncate flex-1 w-0"
+            x-text="item.url.replace('https://', '')"
+          >
+          </p>
+
+          <Button x-on:click="removeItem(index)" variant="ghost">&times;</Button
+          >
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <div class="w-full">
+    <div class="border border-primary-foreground/20">
+      <div class="flex items-center border-b border-primary-foreground/20 pl-4">
+        <div class="flex-0 mr-2 w-4 h-4">
+          <Checkbox x-model="isFilteringOnBpm" />
+        </div>
+        <div
+          class="flex-1 flex items-center"
+          x-bind:class="{ 'opacity-50 cursor-not-allowed': !isFilteringOnBpm }"
+        >
+          <p class="flex-0 font-mono text-xl mr-4">bpm filter:</p>
+          <input
+            type="number"
+            x-model="minBpm"
+            x-bind:disabled="!isFilteringOnBpm || isCrafting"
+            x-bind:class="{ 'cursor-not-allowed': !isFilteringOnBpm || isCrafting }"
+            placeholder="120"
+            class="w-0 flex-1 font-mono border-none text-primary-foreground text-xl px-4 py-1 outline-none bg-primary/80 focus:bg-primary"
+          />
+          <p class="flex-0 mx-4 font-mono text-xl">to</p>
+          <input
+            type="number"
+            x-model="maxBpm"
+            x-bind:disabled="!isFilteringOnBpm || isCrafting"
+            x-bind:class="{ 'cursor-not-allowed': !isFilteringOnBpm || isCrafting }"
+            placeholder="140"
+            class="w-0 flex-1 font-mono border-none text-primary-foreground text-xl px-4 py-1 outline-none bg-primary/80 focus:bg-primary"
+          />
+        </div>
+      </div>
+
+      <div
+        class="flex flex-col md:flex-row md:items-center border-b border-primary-foreground/20 pl-4 pr-4 md:pr-0"
+      >
+        <p class="flex-0 font-mono text-xl mr-4">sort by:</p>
+        <div
+          class="flex items-center justify-between md:justify-initial md:gap-4"
+        >
+          <template x-for="sort in ['relevance', 'popularity', 'random']">
+            <Button
+              x-on:click="sortBy = sort"
+              x-bind:disabled="sortBy === sort"
+              variant="ghost"
+              size="default-no-padding"
+            >
+              <span
+                class="underline-offset-4"
+                x-bind:class="{ 'underline': sortBy === sort }"
+                x-text="sort"></span>
+            </Button>
+          </template>
+        </div>
+      </div>
+
+      <div class="flex items-center pl-4">
+        <p>
+          <span
+            x-text="items.length === 1 ? `1 seed item` : `${items.length} seed items`"
+          ></span>
+          <span
+            x-text="recommendations.length === 1 ? `& 1 rec crafted` : `& ${recommendations.length} recs crafted`"
+          ></span>
+        </p>
+        <div class="flex-1"></div>
+        <Button
+          class="flex-0"
+          x-on:click="getRecommendations"
+          x-bind:disabled="items.length === 0 || isCrafting"
+          x-text="isCrafting ? 'crafting...' : (recommendations.length === 0 ? 'start crafting ->' : 're-craft ->')"
+          variant="link"
+        />
+      </div>
+    </div>
+
+    <div
+      class="mt-4 w-full"
+      x-bind:class="{ 'mb-12': !!recommendations.length }"
+    >
+      <template x-for="rec in recommendations">
+        <div class="even:bg-primary/80 py-1 px-4 flex items-center">
+          <a
+            x-bind:href="rec.url"
+            target="_blank"
+            class="font-mono text-primary-foreground truncate flex-1"
+          >
+            <p
+              class="font-mono text-primary-foreground truncate flex-1"
+              x-text="rec.url.replace('https://', '')"
+            >
+            </p>
+          </a>
+        </div>
+      </template>
+    </div>
+  </div>
+</div>
+
+<script>
+  import { generateRecommendations, getBandcampId } from '@/lib/api'
+
+  document.addEventListener('alpine:init', () => {
+    Alpine.data('alpineData', function () {
+      return {
+        url: '',
+        isFilteringOnBpm: this.$persist(true),
+        minBpm: this.$persist(120),
+        maxBpm: this.$persist(140),
+        items: this.$persist([]),
+        sortBy: this.$persist('relevance'), // "relevance", "popularity", "random"
+        recommendations: this.$persist([]),
+        isCrafting: false,
+        async addItem() {
+          if (this.url === '') return
+          if (this.items.find((item) => item.url === this.url)) {
+            this.url = ''
+            return
+          }
+          try {
+            const item = await getBandcampId({ url: this.url })
+            this.items.push(item)
+            this.url = ''
+          } catch (error) {
+            console.error('Failed to add item:', error)
+          }
+        },
+        async removeItem(index) {
+          this.items.splice(index, 1)
+        },
+        async getRecommendations() {
+          try {
+            this.recommendations = []
+            this.isCrafting = true
+            const request = {
+              set_input: { items: this.items },
+              bpm_range: { min: this.minBpm, max: this.maxBpm },
+              filter_bpm: this.isFilteringOnBpm,
+              sort_by: this.sortBy,
+            }
+            this.recommendations = await generateRecommendations(request)
+          } catch (error) {
+            console.error('Failed to get recommendations:', error)
+          } finally {
+            this.isCrafting = false
+          }
+        },
+      }
+    })
+  })
+</script>

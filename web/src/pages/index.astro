@@ -1,6 +1,6 @@
 ---
 import '@/globals.css'
-import Crafter from '@/components/Crafter.tsx'
+import Crafter from '@/components/Crafter.astro'
 ---
 
 <html lang="en">
@@ -10,9 +10,27 @@ import Crafter from '@/components/Crafter.tsx'
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
 
+    <script
+      defer
+      src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js"
+    ></script>
+
     <title>set crafter</title>
   </head>
-  <body>
-    <Crafter client:load />
+  <body
+    class="bg-background text-foreground font-mono w-screen h-screen flex flex-col items-center pt-12 sm:pt-24"
+  >
+    <h1
+      class="text-3xl text-primary-foreground font-bold font-mono tracking-wider drop-shadow-primary-lg"
+    >
+      set crafter
+    </h1>
+    <p class="mt-2 text-xl max-w-sm text-center leading-tight px-6">
+      enter bandcamp tracks or albums and get similar tracks suggested to you
+    </p>
+
+    <div class="mt-12 md:mt-24 w-7xl w-full px-8 max-w-7xl">
+      <Crafter />
+    </div>
   </body>
 </html>

@@ -43,7 +43,10 @@ async def generate_recommendations(request: RecommendationRequest):
 @app.post("/get-bandcamp-id", response_model=Item)
 async def get_bandcamp_id(input: BandcampUrl):
     try:
-        props = get_json_from_html(input.url)
+        url = input.url
+        if not url.startswith("https://") and not url.startswith("http://"):
+            url = "https://" + url
+        props = get_json_from_html(url)
         if props.get("album_id"):
             print(f"Found album_id: {props['album_id']}")
             return Item(
