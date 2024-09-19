@@ -109,25 +109,57 @@ import Checkbox from '@/components/Checkbox.astro'
       </div>
     </div>
 
-    <div
-      class="mt-4 w-full"
-      x-bind:class="{ 'mb-12': !!recommendations.length }"
-    >
-      <template x-for="rec in recommendations">
-        <div class="even:bg-primary/80 py-1 px-4 flex items-center">
-          <a
-            x-bind:href="rec.url"
-            target="_blank"
-            class="font-mono text-primary-foreground truncate flex-1"
-          >
-            <p
-              class="font-mono text-primary-foreground truncate flex-1"
-              x-text="rec.url.replace('https://', '')"
+    <div class="mt-4 w-full" x-bind:class="{ 'mb-12': !!recommendations.length }">
+      <div class="mb-4 flex items-center justify-end text-base">
+        <p class="flex-0 font-mono mr-4">show as:</p>
+        <div class="flex items-center justify-between md:justify-initial md:gap-4">
+          <template x-for="mode in ['urls', 'previews']">
+            <Button
+              x-on:click="displayMode = mode"
+              x-bind:disabled="displayMode === mode"
+              variant="ghost"
+              size="default-no-padding"
+              class="text-base!"
             >
-            </p>
-          </a>
+              <span
+                class="underline-offset-4"
+                x-bind:class="{ 'underline': displayMode === mode }"
+                x-text="mode"
+              ></span>
+            </Button>
+          </template>
         </div>
-      </template>
+      </div>
+
+      <div x-show="displayMode === 'urls'">
+        <template x-for="rec in recommendations">
+          <div class="even:bg-primary/80 py-1 px-4 flex items-center">
+            <a
+              x-bind:href="rec.url"
+              target="_blank"
+              class="font-mono text-primary-foreground truncate flex-1"
+            >
+              <p
+                class="font-mono text-primary-foreground truncate flex-1"
+                x-text="rec.url.replace('https://', '')"
+              >
+              </p>
+            </a>
+          </div>
+        </template>
+      </div>
+
+      <div x-show="displayMode === 'previews'">
+        <template x-for="rec in recommendations">
+          <div class="w-full mb-4">
+            <iframe
+              x-bind:src="getBandcampEmbedUrl(rec.url, rec.id)"
+              x-bind:style="getBandcampEmbedStyle(rec.url)"
+              seamless
+            ></iframe>
+          </div>
+        </template>
+      </div>
     </div>
   </div>
 </div>
@@ -144,6 +176,7 @@ import Checkbox from '@/components/Checkbox.astro'
         maxBpm: this.$persist(140),
         items: this.$persist([]),
         sortBy: this.$persist('relevance'), // "relevance", "popularity", "random"
+        displayMode: this.$persist('previews'),
         recommendations: this.$persist([]),
         isCrafting: false,
         async addItem() {
@@ -179,6 +212,19 @@ import Checkbox from '@/components/Checkbox.astro'
           } finally {
             this.isCrafting = false
           }
+        },
+        getBandcampEmbedUrl(url: string, id: string) {
+          const urlParts = url.split('/');
+          const isAlbum = urlParts.includes('album');
+          /*           const id = urlParts[urlParts.length - 1]; */
+          const type = isAlbum ? 'album' : 'track';
+          return `https://bandcamp.com/EmbeddedPlayer/${type}=${id}/size=large/bgcol=183344/linkcol=a5f3fc/artwork=small/transparent=true/`;
+        },
+        getBandcampEmbedStyle(url: string) {
+          const urlParts = url.split('/');
+          const isAlbum = urlParts.includes('album');
+          const height = isAlbum ? 320 : 100;
+          return `border: 0; width: 100%; height: ${height}px;`
         },
       }
     })
