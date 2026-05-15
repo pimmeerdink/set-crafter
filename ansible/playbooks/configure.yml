@@ -1,47 +1,68 @@
 ---
-- name: Configure API (nginx + SSL + system deps)
-  hosts: api
-  become: true
-  vars:
-    app_name: "{{ target.app_name | default('set-crafter-api') }}"
-    socket_path: "/run/{{ app_name }}/{{ app_name }}.sock"
+# Run with: uv run ops configure --env production [target]
+# `hosts: servers` + per-target tags lets one play cover all targets on a host,
+# and ops picks the right ones via --tags <target_name>.
+- name: Configure
+  hosts: servers
+  become: false
 
-  pre_tasks:
-    - name: Install ffmpeg (required by pydub for mp3 decode)
-      ansible.builtin.apt:
-        name: ffmpeg
-        state: present
-        update_cache: true
-        cache_valid_time: 3600
+  tasks:
+    - name: Configure api
+      tags: [api]
+      block:
+        # Pydub shells out to ffmpeg. Check first because stl-web-1 has a
+        # broken openssh-server post-install script that makes every apt
+        # operation return non-zero even when nothing is actually wrong.
+        - name: Check if ffmpeg is installed
+          ansible.builtin.command: which ffmpeg
+          register: ffmpeg_check
+          changed_when: false
+          failed_when: false
 
-  roles:
-    - role: socialtechnologylab.stl.nginx_site
-      vars:
-        nginx_site_domain: "{{ target.domain }}"
-        nginx_site_project_name: "{{ app_name }}"
-        nginx_site_api_proxy: true
-        nginx_site_api_socket: "{{ socket_path }}"
+        - name: Install ffmpeg (only if missing)
+          ansible.builtin.apt:
+            name: ffmpeg
+            state: present
+            update_cache: true
+            cache_valid_time: 3600
+          become: true
+          when: ffmpeg_check.rc != 0
 
-    - role: socialtechnologylab.stl.certbot
-      vars:
-        certbot_domain: "{{ target.domain }}"
+        - name: Configure nginx for api
+          include_role:
+            name: socialtechnologylab.stl.nginx_site
+          vars:
+            nginx_site_domain: "{{ targets.api.domain }}"
+            nginx_site_project_name: "{{ targets.api.app_name }}"
+            # web_root is required by the role's validator even in api-only
+            # mode. Point it at a deploy-owned dir so the role's "ensure web
+            # root" tasks succeed.
+            nginx_site_web_root: "/var/www/{{ targets.api.app_name }}"
+            nginx_site_api_proxy: true
+            nginx_site_api_only: true
+            nginx_site_api_path: "/"
+            nginx_site_api_socket: "/run/{{ targets.api.app_name }}/{{ targets.api.app_name }}.sock"
 
+        - name: Get SSL certificate for api
+          include_role:
+            name: socialtechnologylab.stl.certbot
+          vars:
+            certbot_domain: "{{ targets.api.domain }}"
 
-- name: Configure web (nginx + SSL for static site)
-  hosts: web
-  become: true
-  vars:
-    app_name: "{{ target.app_name | default('set-crafter-web') }}"
-    web_dir: "{{ target.web_dir | default('/var/www/' + app_name) }}"
+    - name: Configure web
+      tags: [web]
+      block:
+        - name: Configure nginx for web
+          include_role:
+            name: socialtechnologylab.stl.nginx_site
+          vars:
+            nginx_site_domain: "{{ targets.web.domain }}"
+            nginx_site_project_name: "{{ targets.web.app_name }}"
+            nginx_site_web_root: "{{ targets.web.web_dir }}"
+            nginx_site_spa_fallback: true
 
-  roles:
-    - role: socialtechnologylab.stl.nginx_site
-      vars:
-        nginx_site_domain: "{{ target.domain }}"
-        nginx_site_project_name: "{{ app_name }}"
-        nginx_site_web_root: "{{ web_dir }}"
-        nginx_site_spa_fallback: true
-
-    - role: socialtechnologylab.stl.certbot
-      vars:
-        certbot_domain: "{{ target.domain }}"
+        - name: Get SSL certificate for web
+          include_role:
+            name: socialtechnologylab.stl.certbot
+          vars:
+            certbot_domain: "{{ targets.web.domain }}"

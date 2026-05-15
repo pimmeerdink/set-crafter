@@ -1,39 +1,97 @@
 ---
-- name: Deploy API
-  hosts: api
-  become: true
-  vars:
-    app_name: "{{ target.app_name | default('set-crafter-api') }}"
+# Run with: uv run ops deploy --env production [target]
+- name: Deploy
+  hosts: servers
+  become: false
 
-  roles:
-    - role: socialtechnologylab.stl.python_app
+  tasks:
+    - name: Deploy api
+      tags: [api]
+      block:
+        - name: Deploy set-crafter API
+          include_role:
+            name: socialtechnologylab.stl.python_app
+          vars:
+            python_app_name: "{{ targets.api.app_name }}"
+            python_app_repo: "{{ env.GITHUB_REPO }}"
+            python_app_branch: "{{ branch | default('main') }}"
+            python_app_module: "{{ targets.api.module }}"
+            python_app_use_uv_run: true
+            python_app_env_template: "set-crafter-api.env.j2"
+            python_app_health_endpoint: "/docs"
+
+    - name: Deploy web
+      tags: [web]
       vars:
-        python_app_name: "{{ app_name }}"
-        python_app_repo: "{{ env.GITHUB_REPO }}"
-        python_app_branch: "{{ branch | default('main') }}"
-        python_app_module: "{{ target.module | default('set_crafter.api:app') }}"
-        python_app_use_uv_run: true
-        python_app_env_template: "set-crafter-api.env.j2"
-        python_app_health_endpoint: "/docs"
+        app_dir: "/opt/{{ targets.web.app_name }}"
+      block:
+        - name: Ensure app directory exists
+          ansible.builtin.file:
+            path: "{{ app_dir }}"
+            state: directory
+            owner: deploy
+            group: deploy
+            mode: "0755"
+          become: true
 
+        - name: Ensure web directory exists
+          ansible.builtin.file:
+            path: "{{ targets.web.web_dir }}"
+            state: directory
+            owner: deploy
+            group: www-data
+            mode: "0755"
+          become: true
 
-- name: Deploy web (Astro static build)
-  hosts: web
-  become: true
-  become_user: deploy
-  vars:
-    app_name: "{{ target.app_name | default('set-crafter-web') }}"
-    app_dir: "{{ target.app_dir | default('/opt/' + app_name + '/repo') }}"
-    web_dir: "{{ target.web_dir | default('/var/www/' + app_name) }}"
+        - name: Ensure GitHub access
+          include_role:
+            name: socialtechnologylab.stl.ensure_github_access
+          vars:
+            ensure_github_access_repo: "{{ env.GITHUB_REPO }}"
+            ensure_github_access_user: deploy
+            ensure_github_access_github_token: "{{ env.GITHUB_TOKEN | default('') }}"
 
-  roles:
-    - role: socialtechnologylab.stl.static_deploy
-      vars:
-        static_deploy_repo: "{{ env.GITHUB_REPO }}"
-        static_deploy_branch: "{{ branch | default('main') }}"
-        static_deploy_app_dir: "{{ app_dir }}"
-        static_deploy_web_dir: "{{ web_dir }}"
-        # Astro lives in the web/ subdir; build with pnpm.
-        static_deploy_install_command: "cd web && pnpm install --frozen-lockfile"
-        static_deploy_build_command: "cd web && PUBLIC_API_BASE=https://api.set-crafter.socialtechnologylab.nl pnpm build"
-        static_deploy_build_output: "web/dist"
+        - name: Checkout latest source
+          include_role:
+            name: socialtechnologylab.stl.git_deploy
+            tasks_from: checkout.yml
+          vars:
+            git_repo: "{{ env.GITHUB_REPO }}"
+            git_branch: "{{ branch | default('main') }}"
+            git_dest: "{{ app_dir }}"
+            git_user: deploy
+
+        - name: Install frontend dependencies
+          ansible.builtin.shell:
+            cmd: pnpm install --frozen-lockfile
+            chdir: "{{ app_dir }}/web"
+          become: true
+          become_user: deploy
+          changed_when: true
+
+        - name: Build Astro static site
+          ansible.builtin.shell:
+            cmd: pnpm build
+            chdir: "{{ app_dir }}/web"
+          environment:
+            PUBLIC_API_BASE: "https://{{ targets.api.domain }}"
+          become: true
+          become_user: deploy
+          changed_when: true
+
+        - name: Publish built site to web root
+          ansible.posix.synchronize:
+            src: "{{ app_dir }}/web/dist/"
+            dest: "{{ targets.web.web_dir }}/"
+            delete: true
+            recursive: true
+          delegate_to: "{{ inventory_hostname }}"
+
+        - name: Set permissions on web root
+          ansible.builtin.file:
+            path: "{{ targets.web.web_dir }}"
+            owner: deploy
+            group: www-data
+            mode: "0755"
+            recurse: true
+          become: true
