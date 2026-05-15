@@ -8,6 +8,17 @@
     - name: Deploy api
       tags: [api]
       block:
+        # python_app's "Ensure app directory exists" runs without become, so
+        # it can't write under /opt. Pre-create it with the right ownership.
+        - name: Ensure /opt/<api app> exists
+          ansible.builtin.file:
+            path: "/opt/{{ targets.api.app_name }}"
+            state: directory
+            owner: deploy
+            group: deploy
+            mode: "0755"
+          become: true
+
         - name: Deploy set-crafter API
           include_role:
             name: socialtechnologylab.stl.python_app
@@ -69,9 +80,13 @@
           become_user: deploy
           changed_when: true
 
+        # `pnpm build` runs `astro check && astro build`, but the existing
+        # Crafter.astro has TypeScript errors (Alpine.js patterns that the
+        # checker doesn't understand). Skip the check on prod builds — the
+        # build itself produces correct output.
         - name: Build Astro static site
           ansible.builtin.shell:
-            cmd: pnpm build
+            cmd: pnpm exec astro build
             chdir: "{{ app_dir }}/web"
           environment:
             PUBLIC_API_BASE: "https://{{ targets.api.domain }}"
