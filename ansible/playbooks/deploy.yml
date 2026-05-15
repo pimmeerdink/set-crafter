@@ -40,6 +40,8 @@
             python_app_use_uv_run: true
             python_app_env_template: "set-crafter-api.env.j2"
             python_app_health_endpoint: "/docs"
+            # set-crafter has no database — skip the default alembic command
+            python_app_migration_command: ""
 
     - name: Deploy web
       tags: [web]
