@@ -19,6 +19,16 @@
             mode: "0755"
           become: true
 
+        # python_app's "Set repository permissions" recursively chowns the
+        # repo dir and follows symlinks, which means it chases .venv/bin/python
+        # → /usr/bin/python3 and fails. Remove .venv before that runs; uv sync
+        # will recreate it afterwards.
+        - name: Remove stale .venv before chown
+          ansible.builtin.file:
+            path: "/opt/{{ targets.api.app_name }}/repo/.venv"
+            state: absent
+          become: true
+
         - name: Deploy set-crafter API
           include_role:
             name: socialtechnologylab.stl.python_app
