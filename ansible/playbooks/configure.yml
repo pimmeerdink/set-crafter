@@ -1,0 +1,47 @@
+---
+- name: Configure API (nginx + SSL + system deps)
+  hosts: api
+  become: true
+  vars:
+    app_name: "{{ target.app_name | default('set-crafter-api') }}"
+    socket_path: "/run/{{ app_name }}/{{ app_name }}.sock"
+
+  pre_tasks:
+    - name: Install ffmpeg (required by pydub for mp3 decode)
+      ansible.builtin.apt:
+        name: ffmpeg
+        state: present
+        update_cache: true
+        cache_valid_time: 3600
+
+  roles:
+    - role: socialtechnologylab.stl.nginx_site
+      vars:
+        nginx_site_domain: "{{ target.domain }}"
+        nginx_site_project_name: "{{ app_name }}"
+        nginx_site_api_proxy: true
+        nginx_site_api_socket: "{{ socket_path }}"
+
+    - role: socialtechnologylab.stl.certbot
+      vars:
+        certbot_domain: "{{ target.domain }}"
+
+
+- name: Configure web (nginx + SSL for static site)
+  hosts: web
+  become: true
+  vars:
+    app_name: "{{ target.app_name | default('set-crafter-web') }}"
+    web_dir: "{{ target.web_dir | default('/var/www/' + app_name) }}"
+
+  roles:
+    - role: socialtechnologylab.stl.nginx_site
+      vars:
+        nginx_site_domain: "{{ target.domain }}"
+        nginx_site_project_name: "{{ app_name }}"
+        nginx_site_web_root: "{{ web_dir }}"
+        nginx_site_spa_fallback: true
+
+    - role: socialtechnologylab.stl.certbot
+      vars:
+        certbot_domain: "{{ target.domain }}"

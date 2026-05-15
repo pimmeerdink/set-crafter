@@ -1,0 +1,39 @@
+---
+- name: Deploy API
+  hosts: api
+  become: true
+  vars:
+    app_name: "{{ target.app_name | default('set-crafter-api') }}"
+
+  roles:
+    - role: socialtechnologylab.stl.python_app
+      vars:
+        python_app_name: "{{ app_name }}"
+        python_app_repo: "{{ env.GITHUB_REPO }}"
+        python_app_branch: "{{ branch | default('main') }}"
+        python_app_module: "{{ target.module | default('set_crafter.api:app') }}"
+        python_app_use_uv_run: true
+        python_app_env_template: "set-crafter-api.env.j2"
+        python_app_health_endpoint: "/docs"
+
+
+- name: Deploy web (Astro static build)
+  hosts: web
+  become: true
+  become_user: deploy
+  vars:
+    app_name: "{{ target.app_name | default('set-crafter-web') }}"
+    app_dir: "{{ target.app_dir | default('/opt/' + app_name + '/repo') }}"
+    web_dir: "{{ target.web_dir | default('/var/www/' + app_name) }}"
+
+  roles:
+    - role: socialtechnologylab.stl.static_deploy
+      vars:
+        static_deploy_repo: "{{ env.GITHUB_REPO }}"
+        static_deploy_branch: "{{ branch | default('main') }}"
+        static_deploy_app_dir: "{{ app_dir }}"
+        static_deploy_web_dir: "{{ web_dir }}"
+        # Astro lives in the web/ subdir; build with pnpm.
+        static_deploy_install_command: "cd web && pnpm install --frozen-lockfile"
+        static_deploy_build_command: "cd web && PUBLIC_API_BASE=https://api.set-crafter.socialtechnologylab.nl pnpm build"
+        static_deploy_build_output: "web/dist"

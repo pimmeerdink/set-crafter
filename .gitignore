@@ -179,6 +179,18 @@ ENV/
 env.bak/
 venv.bak/
 
+# stl-infra
+environments/*/.env
+environments/*/hosts.yml
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+*.auto.tfvars.json
+
+# Claude Code per-machine state
+.claude/
+
 # Spyder project settings
 .spyderproject
 .spyproject

@@ -1,8 +1,7 @@
 import asyncio
-from schemas import BPMRange, Item
-from bandcamp_api import Bandcamp
-from set import Set
-from recommend_tracks import get_recommendations
+from .schemas import BPMRange, Item
+from .set import Set
+from .recommend_tracks import get_recommendations
 
 ITEMS = [
     Item(

@@ -2,11 +2,11 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
-from schemas import Item, Set, BandcampUrl, BPMRange, RecommendationRequest
-from constants import BpmRange
+from .schemas import Item, Set, BandcampUrl, BPMRange, RecommendationRequest
+from .constants import BpmRange
 import traceback
-from recommend_tracks import get_recommendations
-from utils import get_json_from_html
+from .recommend_tracks import get_recommendations
+from .utils import get_json_from_html
 
 app = FastAPI()
 
@@ -15,8 +15,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "http://localhost:4321"
-    ],  # Adjust this to match your frontend URL
+        "http://localhost:4321",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:4321",
+        "https://set-crafter.socialtechnologylab.nl",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

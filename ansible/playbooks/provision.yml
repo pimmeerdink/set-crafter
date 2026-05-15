@@ -1,0 +1,10 @@
+---
+# stl-web-1 is a shared, pre-provisioned server. No-op so `ops provision` doesn't
+# try to re-provision it. Re-add the provision role here if set-crafter ever moves
+# to a dedicated server.
+- name: Provision (shared server — no-op)
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Confirm host is reachable
+      ansible.builtin.ping:

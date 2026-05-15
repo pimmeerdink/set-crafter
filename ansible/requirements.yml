@@ -1,0 +1,10 @@
+---
+collections:
+  - name: git+ssh://git@github.com/socialtechnologylab/stl-infra.git#/ansible/collections/ansible_collections/socialtechnologylab/stl
+    type: git
+
+  - name: devsec.hardening
+    version: ">=8.0.0"
+
+  - name: community.general
+    version: ">=7.0.0"

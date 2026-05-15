@@ -1,4 +1,4 @@
-from recommend_tracks import get_recommendations
+from .recommend_tracks import get_recommendations
 
 
 class Set:
