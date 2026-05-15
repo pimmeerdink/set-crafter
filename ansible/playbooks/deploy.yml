@@ -32,7 +32,8 @@
         - name: Deploy set-crafter API
           include_role:
             name: socialtechnologylab.stl.python_app
-          become: true
+            apply:
+              become: true
           vars:
             python_app_name: "{{ targets.api.app_name }}"
             python_app_repo: "{{ env.GITHUB_REPO }}"
