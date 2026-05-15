@@ -10,6 +10,27 @@
     - name: Configure api
       tags: [api]
       block:
+        # systemd's mount namespacing requires the socket dir to exist before
+        # ExecStartPre runs. Create it via tmpfiles.d so it persists across
+        # reboots without being cleaned up by systemd housekeeping.
+        - name: Create socket dir (immediate)
+          ansible.builtin.file:
+            path: "/run/{{ targets.api.app_name }}"
+            state: directory
+            owner: deploy
+            group: deploy
+            mode: "0755"
+          become: true
+
+        - name: Create tmpfiles.d config for socket dir
+          ansible.builtin.copy:
+            content: "d /run/{{ targets.api.app_name }} 0755 deploy deploy -\n"
+            dest: "/etc/tmpfiles.d/{{ targets.api.app_name }}.conf"
+            owner: root
+            group: root
+            mode: "0644"
+          become: true
+
         # Pydub shells out to ffmpeg. Check first because stl-web-1 has a
         # broken openssh-server post-install script that makes every apt
         # operation return non-zero even when nothing is actually wrong.
