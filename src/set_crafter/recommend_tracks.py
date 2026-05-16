@@ -4,9 +4,10 @@ from urllib.parse import urlparse
 
 import aiohttp
 import pandas as pd
+from bs4 import BeautifulSoup, SoupStrainer
 
 from .analyze_bpm import process_bpm_urls
-from .bandcamp_user import BcUser
+from .bandcamp_user import BcUser, get_fan_id_from_profile
 from .constants import BpmRange
 from .schemas import Item
 
@@ -48,6 +49,41 @@ async def get_user_purchases(session, fan_id):
     return await user.scrape_collection_items()
 
 
+async def get_item_tags(session, url):
+    """Scrape bandcamp tags from an item page (e.g. ['techno', 'amapiano'])."""
+    try:
+        async with session.get(url) as response:
+            content = await response.text()
+    except Exception as exc:
+        print(f"tag fetch failed for {url}: {exc}")
+        return []
+    soup = BeautifulSoup(content, "html.parser", parse_only=SoupStrainer("a"))
+    return [a.text.strip().lower() for a in soup.find_all(class_="tag")]
+
+
+def _matches_tags(item_tags, wanted, mode):
+    wanted_set = {t.strip().lower() for t in wanted if t.strip()}
+    if not wanted_set:
+        return True
+    have = set(item_tags)
+    if mode == "all":
+        return wanted_set.issubset(have)
+    return bool(wanted_set & have)
+
+
+async def _get_owned_urls(session, profile_url, max_items=2000):
+    """Resolve a profile URL to a set of item URLs the user already owns."""
+    if not profile_url:
+        return set()
+    fan_id = await get_fan_id_from_profile(session, profile_url)
+    if not fan_id:
+        print(f"could not resolve fan_id for {profile_url}")
+        return set()
+    user = BcUser(fan_id, session)
+    items = await user.scrape_collection_items(count=max_items)
+    return {it.url for it in items}
+
+
 async def get_recommendations(
     items,
     bpm_range,
@@ -55,6 +91,9 @@ async def get_recommendations(
     nof_recs=20,
     filter_bpm=True,
     sort_by="relevance",
+    tags=None,
+    tag_match="any",
+    exclude_owned_by_profile=None,
 ):
     headers = {
         "User-Agent": (
@@ -84,17 +123,22 @@ async def get_recommendations(
             )
         ]
 
-        purchase_lists = await asyncio.gather(
-            *[get_user_purchases(session, s) for s in supporters]
+        # Fetch supporter collections and the requester's owned-items list in
+        # parallel — owned-list is a single bandcamp API call so it's cheap.
+        purchase_lists, owned_urls = await asyncio.gather(
+            asyncio.gather(
+                *[get_user_purchases(session, s) for s in supporters]
+            ),
+            _get_owned_urls(session, exclude_owned_by_profile),
         )
         all_purchases = _flatten(purchase_lists)
 
-        org_urls = {item.url for item in items}
+        excluded_urls = {item.url for item in items} | owned_urls
         purchase_tuples = [
             (i.id, i.type, i.url, i.sales) for i in all_purchases
         ]
         counts = pd.Series(purchase_tuples).value_counts()
-        counts = counts[~counts.index.map(lambda x: x[2]).isin(org_urls)]
+        counts = counts[~counts.index.map(lambda x: x[2]).isin(excluded_urls)]
 
         if sort_by == "random":
             ranked = counts.sample(frac=1)
@@ -105,6 +149,28 @@ async def get_recommendations(
                 ascending=False
             )
         candidates = ranked.index.tolist()
+
+        # Optional tag filter: one HTML fetch per candidate, no audio. Apply
+        # before BPM filtering — much cheaper, and shrinks the BPM probe set.
+        wanted_tags = [t for t in (tags or []) if t and t.strip()]
+        if wanted_tags:
+            TAG_PROBE = 200
+            head = candidates[:TAG_PROBE]
+            tail = candidates[TAG_PROBE:]
+            print(
+                f"Tag-filtering top {len(head)} candidates by "
+                f"{tag_match} of {wanted_tags}",
+                flush=True,
+            )
+            tag_lists = await asyncio.gather(
+                *[get_item_tags(session, c[2]) for c in head]
+            )
+            filtered = [
+                c for c, tl in zip(head, tag_lists)
+                if _matches_tags(tl, wanted_tags, tag_match)
+            ]
+            print(f"  tag filter kept {len(filtered)}/{len(head)}", flush=True)
+            candidates = filtered + tail  # tail preserves order if filtered is short
 
         if not filter_bpm:
             top = candidates[:nof_recs]

@@ -16,6 +16,9 @@ export interface GenerateRecommendationsRequest {
   bpm_range: { min: number; max: number }
   filter_bpm: boolean
   sort_by: 'relevance' | 'popularity' | 'random'
+  tags?: string[]
+  tag_match?: 'any' | 'all'
+  exclude_owned_by_profile?: string | null
 }
 
 export async function generateRecommendations(
@@ -25,5 +28,35 @@ export async function generateRecommendations(
     '/generate-recommendations',
     request,
   )
+  return data
+}
+
+export interface ProfileItemsRequest {
+  profile_url: string
+  source: 'collection' | 'wishlist'
+  limit?: number
+}
+
+export async function getProfileItems(
+  request: ProfileItemsRequest,
+): Promise<Item[]> {
+  const { data } = await client.post<Item[]>('/get-profile-items', request)
+  return data
+}
+
+export interface DetectBpmRequest {
+  id: string
+  url: string
+}
+
+export interface DetectBpmResponse {
+  bpm: number | null
+  error?: string | null
+}
+
+export async function detectBpm(
+  request: DetectBpmRequest,
+): Promise<DetectBpmResponse> {
+  const { data } = await client.post<DetectBpmResponse>('/detect-bpm', request)
   return data
 }
